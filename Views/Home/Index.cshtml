@@ -1,0 +1,66 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+<div id="fun-chat-body" />
+<form id="fun-chat-form">
+    <input id="fun-chat-input" type="text" style="position: absolute; display: none;" />
+</form>
+
+@section scripts {
+    <script src="~/Scripts/jquery.signalR-2.4.3.min.js"></script>
+    <script src="~/signalr/hubs"></script>
+    <script>
+        var chatHub = $.connection.chatHub;
+        var funChat = $('#fun-chat-body');
+        var funChatForm = $('#fun-chat-form');
+        var funChatInput = $('#fun-chat-input');
+        var chatroom = '@ViewBag.Chatroom';
+
+        funChat.click(function (event) {
+            funChatInput.show().offset({ left: event.clientX, top: event.clientY }).focus();
+        })
+
+        funChatForm.submit(function () {
+            var message = funChatInput.val();
+            var position = funChatInput.offset();
+            chatHub.server.sendMessage(chatroom, message, position.left, position.top);
+            funChatInput.val('').hide();
+            return false;
+        })
+
+        chatHub.client.onNewMessage = function (username, message, left, top) {
+            var newMessage = $('<a>')
+                .addClass('fun-chat-message')
+                .text((username || 'Anonymous') + ': ' + message)
+                .css({ position: 'absolute', cursor: 'pointer' })
+                .offset({ left: left, top: top })
+                .click(function () {
+                    var message = window.prompt("What's the message?");
+                    chatHub.server.sendPrivateMessage(username, message);
+                    return false;
+                });
+
+            funChat.append(newMessage);
+        }
+
+        chatHub.client.onNewPrivateMessage = function (username, message) {
+            var newMessage = $('<a>')
+                .addClass('fun-chat-message')
+                .text('PM from ' + (username || 'Anonymous') + ': ' + message)
+                .css({ position: 'absolute', cursor: 'pointer' })
+                .offset({ left: Math.random() * 500, top: Math.random() * 500 + 50 })
+                .click(function () {
+                    var message = window.prompt("What's the message?");
+                    chatHub.server.sendPrivateMessage(username, message);
+                    return false;
+                });
+
+            funChat.append(newMessage);
+        }
+
+        $.connection.hub.start().done(function () {
+            chatHub.server.joinRoom(chatroom);
+        })
+    </script>
+    }
